@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NutriTrack 🥗
 
-## Getting Started
+An AI-powered calorie & macro tracker. Quick-add common foods, **describe a meal in plain
+English**, or **snap a photo** — Google Gemini estimates the nutrition. Track progress toward
+a daily goal with a live ring, macro bars, and meals grouped by Breakfast / Lunch / Dinner / Snack.
 
-First, run the development server:
+**▶ Live demo:** https://nutritrack-ai-three.vercel.app
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+> No login. The food log is saved in your browser; AI lookups run server-side so the API key stays secret.
+
+## How it works
+
+```mermaid
+flowchart LR
+  subgraph B["User's Browser"]
+    UI["React UI (Next.js)"]
+    LS[("localStorage<br/>food log + goal")]
+  end
+
+  subgraph V["Vercel · Next.js"]
+    API["/api/nutrition/text<br/>/api/nutrition/image"]
+    GEM["lib/gemini.ts<br/>schema · retry · fallback"]
+  end
+
+  GEMINI["Google Gemini API"]
+
+  UI <-->|"log read/write"| LS
+  UI -->|"describe / photo"| API
+  API --> GEM -->|"HTTPS"| GEMINI
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Logging happens entirely in the browser (works on Vercel's read-only filesystem with no DB);
+AI nutrition lookups go through Next.js route handlers to Gemini. Full diagrams (request
+sequences, component tree, deploy pipeline) are in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Three ways to add food** — quick-add catalog, AI text lookup, AI photo recognition
+- **Confirm-before-add** review of AI-detected items (with image preview for photos)
+- **Daily goal ring** (green → amber → red) + protein/carbs/fat **macro bars**
+- **Meals** grouped with subtotals; card-style entries; loading / empty / error states
+- Responsive, dark mode, accessible; Gemini calls **retry + fall back** to a healthy model
 
-## Learn More
+## Quick start
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+git clone git@github.com:kvvinaykumar10121982/nutritrack-ai.git
+cd nutritrack-ai
+npm install
+cp .env.example .env      # add a free Gemini key → GEMINI_API_KEY
+npm run dev               # http://localhost:3000
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The core tracker runs with no key; the AI features need a free key from
+[Google AI Studio](https://aistudio.google.com/apikey).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Tech stack
 
-## Deploy on Vercel
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · `@google/genai`
+(`gemini-2.5-flash-lite`) · localStorage (with Upstash Redis / lowdb wired for future
+cross-device sync).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Docs
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — diagrams & data flow
+- **[CLAUDE.md](CLAUDE.md)** — project overview, folder structure, API reference
+- **[PLAN.md](PLAN.md)** — what was built, improved, and the roadmap
+- **[docs/](docs/)** — dated decision logs
