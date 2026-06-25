@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Food, LogEntry, MealCategory, NutritionItem } from "@/lib/types";
 import { DEFAULT_CALORIE_GOAL, sumTotals } from "@/lib/utils";
+import {
+  addFoodEntry,
+  addItemEntry,
+  clearToday,
+  loadToday,
+  removeEntry as removeLocalEntry,
+} from "@/lib/localLog";
 import Header from "./Header";
 import DailySummary from "./DailySummary";
 import AddFood from "./AddFood";
@@ -10,26 +17,26 @@ import FoodLog from "./FoodLog";
 
 const GOAL_KEY = "nutritrack:calorie-goal";
 
-/** Top-level interactive widget: owns the log + goal and talks to the API. */
+/**
+ * Top-level interactive widget. The food log is stored in the browser
+ * (localStorage) so it persists across refreshes and works on Vercel without a
+ * writable server filesystem. AI lookups still call the server routes.
+ */
 export default function CalorieTracker() {
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [goal, setGoal] = useState(DEFAULT_CALORIE_GOAL);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pendingId, setPendingId] = useState<string | null>(null);
 
-  // Load today's log + the saved goal on mount.
+  // Load today's log + the saved goal on mount (client-only).
   useEffect(() => {
     (async () => {
-      const saved = Number(localStorage.getItem(GOAL_KEY));
-      if (Number.isFinite(saved) && saved > 0) setGoal(saved);
       try {
-        const res = await fetch("/api/log", { cache: "no-store" });
-        if (!res.ok) throw new Error("Failed to load log");
-        const data = (await res.json()) as { log: LogEntry[] };
-        setEntries(data.log);
+        const saved = Number(localStorage.getItem(GOAL_KEY));
+        if (Number.isFinite(saved) && saved > 0) setGoal(saved);
+        setEntries(loadToday());
       } catch {
-        setError("Could not load your food log.");
+        setError("Storage is unavailable in this browser, so your log can't be saved.");
       } finally {
         setLoading(false);
       }
@@ -38,43 +45,31 @@ export default function CalorieTracker() {
 
   const updateGoal = useCallback((next: number) => {
     setGoal(next);
-    localStorage.setItem(GOAL_KEY, String(next));
+    try {
+      localStorage.setItem(GOAL_KEY, String(next));
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const totals = useMemo(() => sumTotals(entries), [entries]);
 
-  const addFood = useCallback(async (food: Food, meal: MealCategory) => {
-    setPendingId(food.id);
+  const addFood = useCallback((food: Food, meal: MealCategory) => {
     setError(null);
     try {
-      const res = await fetch("/api/log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ foodId: food.id, meal }),
-      });
-      if (!res.ok) throw new Error("Failed to add");
-      const data = (await res.json()) as { entry: LogEntry };
-      setEntries((prev) => [data.entry, ...prev]);
+      const entry = addFoodEntry(food, meal);
+      setEntries((prev) => [entry, ...prev]);
     } catch {
       setError("Could not add that food. Try again.");
-    } finally {
-      setPendingId(null);
     }
   }, []);
 
-  // Add an AI-found item. Returns success so the review UI can show per-item state.
   const addItem = useCallback(
     async (item: NutritionItem, meal: MealCategory): Promise<boolean> => {
       setError(null);
       try {
-        const res = await fetch("/api/log", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ item, meal }),
-        });
-        if (!res.ok) throw new Error("Failed to add");
-        const data = (await res.json()) as { entry: LogEntry };
-        setEntries((prev) => [data.entry, ...prev]);
+        const entry = addItemEntry(item, meal);
+        setEntries((prev) => [entry, ...prev]);
         return true;
       } catch {
         setError("Could not add that item. Try again.");
@@ -84,32 +79,23 @@ export default function CalorieTracker() {
     []
   );
 
-  const removeEntry = useCallback(
-    async (entryId: string) => {
-      const prev = entries;
-      setEntries((cur) => cur.filter((e) => e.entryId !== entryId)); // optimistic
-      try {
-        const res = await fetch(`/api/log/${entryId}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to remove");
-      } catch {
-        setEntries(prev); // rollback
-        setError("Could not remove that entry.");
-      }
-    },
-    [entries]
-  );
-
-  const clearDay = useCallback(async () => {
-    const prev = entries;
-    setEntries([]); // optimistic
+  const removeEntry = useCallback((entryId: string) => {
+    setEntries((cur) => cur.filter((e) => e.entryId !== entryId));
     try {
-      const res = await fetch("/api/log", { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to clear");
+      removeLocalEntry(entryId);
     } catch {
-      setEntries(prev);
+      setError("Could not remove that entry.");
+    }
+  }, []);
+
+  const clearDay = useCallback(() => {
+    setEntries([]);
+    try {
+      clearToday();
+    } catch {
       setError("Could not clear the day.");
     }
-  }, [entries]);
+  }, []);
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
@@ -128,7 +114,7 @@ export default function CalorieTracker() {
 
         <DailySummary totals={totals} goal={goal} onGoalChange={updateGoal} />
 
-        <AddFood onAddFood={addFood} onAddItem={addItem} pendingId={pendingId} />
+        <AddFood onAddFood={addFood} onAddItem={addItem} pendingId={null} />
 
         {loading ? (
           <div className="flex flex-col gap-2">
@@ -141,7 +127,7 @@ export default function CalorieTracker() {
       </main>
 
       <footer className="mx-auto w-full max-w-2xl px-4 pb-6 pt-2 text-center text-xs text-neutral-500">
-        Stored locally on this device · macros are estimates
+        Saved in your browser · macros are estimates
       </footer>
     </div>
   );

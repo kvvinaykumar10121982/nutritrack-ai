@@ -1,0 +1,6 @@
+# Don't upload local-only files to Vercel deployments.
+data
+dev.log
+docs
+.claude
+.agents
