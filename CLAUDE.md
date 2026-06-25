@@ -48,7 +48,8 @@ Get a key at https://aistudio.google.com/apikey. After editing `.env`, **restart
 
 - **Next.js 16** (App Router) + **React 19** + **TypeScript**
 - **Tailwind CSS 4** — styling (emerald accent; amber/rose reserved for goal status)
-- **lowdb 7** — local JSON-file database (`data/foodlog.json`)
+- **Storage** — Upstash Redis (Vercel KV) in production; **lowdb** JSON file
+  (`data/foodlog.json`) as the automatic local-dev fallback (`lib/db.ts`)
 - **@google/genai** — Gemini SDK; primary model `gemini-2.5-flash-lite`, with auto-retry on
   transient 503s and fallback to `gemini-2.5-flash` when overloaded (see `lib/gemini.ts`)
 

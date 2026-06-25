@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getLog, saveLog } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -9,14 +9,13 @@ export async function DELETE(
   { params }: { params: Promise<{ entryId: string }> }
 ) {
   const { entryId } = await params;
-  const db = await getDb();
-  const before = db.data.log.length;
-  db.data.log = db.data.log.filter((e) => e.entryId !== entryId);
+  const log = await getLog();
+  const next = log.filter((e) => e.entryId !== entryId);
 
-  if (db.data.log.length === before) {
+  if (next.length === log.length) {
     return NextResponse.json({ error: "Entry not found" }, { status: 404 });
   }
 
-  await db.write();
+  await saveLog(next);
   return NextResponse.json({ ok: true });
 }

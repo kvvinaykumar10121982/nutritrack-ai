@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getLog, saveLog } from "@/lib/db";
 import { FOODS } from "@/lib/foods";
 import { isSameDay } from "@/lib/utils";
 import { isMealCategory, mealForTime } from "@/lib/meals";
@@ -40,8 +40,8 @@ function sanitizeItem(raw: unknown): NutritionItem | null {
 
 /** GET /api/log — return today's log entries (newest first). */
 export async function GET() {
-  const db = await getDb();
-  const today = db.data.log
+  const log = await getLog();
+  const today = log
     .filter((e) => isSameDay(e.loggedAt))
     .sort((a, b) => b.loggedAt.localeCompare(a.loggedAt));
   return NextResponse.json({ log: today });
@@ -93,17 +93,16 @@ export async function POST(request: Request) {
     meal,
   };
 
-  const db = await getDb();
-  db.data.log.push(entry);
-  await db.write();
+  const log = await getLog();
+  log.push(entry);
+  await saveLog(log);
 
   return NextResponse.json({ entry }, { status: 201 });
 }
 
 /** DELETE /api/log — clear all of today's entries. */
 export async function DELETE() {
-  const db = await getDb();
-  db.data.log = db.data.log.filter((e) => !isSameDay(e.loggedAt));
-  await db.write();
+  const log = await getLog();
+  await saveLog(log.filter((e) => !isSameDay(e.loggedAt)));
   return NextResponse.json({ ok: true });
 }
