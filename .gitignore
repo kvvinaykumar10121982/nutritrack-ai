@@ -24,6 +24,14 @@
 .DS_Store
 *.pem
 
+# local database (food log persistence)
+/data
+
+# local dev / tooling artifacts
+/dev.log
+/.claude/settings.local.json
+/.agents
+
 # debug
 npm-debug.log*
 yarn-debug.log*

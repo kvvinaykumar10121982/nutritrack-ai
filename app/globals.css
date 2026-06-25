@@ -1,26 +1,65 @@
 @import "tailwindcss";
 
+/* Clouducate brand palette */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --sky: #4fc3f7; /* primary: headings, icons, accents */
+  --navy: #1a237e; /* backgrounds, section headers */
+  --red: #e53935; /* CTAs, highlights, links */
+  --white: #ffffff; /* backgrounds, cards */
+
+  --background: #f3f6fb; /* light, sky-tinted page background */
+  --foreground: #1a237e; /* default text leans navy */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  /* Brand colors → bg-brand-sky, text-brand-navy, bg-brand-red, etc. */
+  --color-brand-sky: var(--sky);
+  --color-brand-navy: var(--navy);
+  --color-brand-red: var(--red);
+
+  /* Fonts: Open Sans body, Montserrat headings */
+  --font-sans: var(--font-open-sans);
+  --font-heading: var(--font-montserrat);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0d1330; /* deep navy-tinted dark */
+    --foreground: #e8eefc;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-open-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+/* Brand rule: headings always use Montserrat. */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Consistent focus ring (brand sky) for keyboard users. */
+:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
